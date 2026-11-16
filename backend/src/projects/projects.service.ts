@@ -1,9 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectDto } from './dto/create-project.dto.js';
-// • Inject PrismaService.
-//           • Implement create(createProjectDto: CreateProjectDto). Check that the owner exists in the database first; 
-//           if not, throw NotFoundException. Then call this.prismaService.project.create(...).
 
 @Injectable()
 export class ProjectsService {
