@@ -1,6 +1,6 @@
 COMPOSE = docker compose
 
-.PHONY: all build up clean fclean re
+.PHONY: all build up log clean fclean re test
 
 all: up
 
@@ -9,6 +9,7 @@ build:
 
 up: build
 	$(COMPOSE) up -d
+
 log:
 	$(COMPOSE) logs -f
 
@@ -19,3 +20,6 @@ fclean:
 	$(COMPOSE) down --rmi all --volumes --remove-orphans
 
 re: fclean all
+
+test:
+	chmod +x testApi.sh && ./testApi.sh

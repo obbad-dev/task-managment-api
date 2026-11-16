@@ -1,182 +1,291 @@
-# Task Management REST API
+<div align="center">
 
-A scalable and secure Task Management REST API built with **NestJS**, **Prisma ORM**, and **PostgreSQL**, fully containerized with **Docker**.
+# 📌 Task Management REST API
 
-Inspired by project management tools like Jira and Trello, this API allows teams to register users, manage projects, assign tasks with deadlines, update task progression (Kanban status), and secure routes with JWT authentication.
+A modern, production-grade RESTful API built with **NestJS**, **Prisma ORM**, and **PostgreSQL**, fully containerized with **Docker** and managed effortlessly via a **Makefile**.
 
----
+[![NestJS](https://img.shields.io/badge/NestJS-12.0-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)](https://nestjs.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-7.x-2D3748?style=for-the-badge&logo=prisma&logoColor=white)](https://www.prisma.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 
-## 🛠️ Tech Stack
+<p align="center">
+  <b>Organize projects • Assign team members • Track task lifecycles • Enforce JWT security</b>
+</p>
 
-- **Framework:** [NestJS 12](https://nestjs.com/)
-- **Language:** TypeScript (Node.js ESM)
-- **Database:** PostgreSQL 17
-- **ORM:** [Prisma 7](https://www.prisma.io/) with `@prisma/adapter-pg`
-- **Security:** Passport/JWT (`@nestjs/jwt`), `bcrypt` password hashing, global Guards
-- **Validation:** `class-validator`, `class-transformer`
-- **Containerization:** Docker & Docker Compose
-
----
-
-## 🏗️ Architecture & Features
-
-### 1. Authentication & Security
-- Passwords salted and hashed with `bcrypt` before storage.
-- Stateless authentication using **JSON Web Tokens (JWT)**.
-- Global `JwtAuthGuard` enforced via `APP_GUARD`.
-- Custom `@Public()` decorator to permit unauthenticated access to login/registration endpoints.
-
-### 2. User Management
-- Full CRUD operations (`POST`, `GET`, `PATCH`, `DELETE`).
-- Email uniqueness validation.
-
-### 3. Project Management
-- One-to-many relationship (`User -> Project`).
-- Relational queries including owner details (`include: { owner: true }`).
-
-### 4. Task Management
-- Nested REST routes (`/projects/:id/tasks`).
-- Multi-relation linking to both **Project** and an optional **Assignee (User)**.
-- Strict `TaskStatus` Enum validation (`TODO`, `IN_PROGRESS`, `DONE`).
-- ISO-8601 deadline dates (`dueDate`).
-- Query-parameter filtering by status (`?status=DONE`) with `ParseEnumPipe`.
+</div>
 
 ---
 
-## 🗄️ Database Schema
+## 📖 Overview
 
-```prisma
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  DONE
-}
+This API is designed for team and project management (inspired by Trello and Jira). It allows companies to manage their workforce, structure work into projects, track tasks with deadlines, and control statuses across customizable workflows—all secured behind strict JWT authentication guards.
 
-model User {
-  id            Int       @id @default(autoincrement())
-  name          String
-  email         String    @unique
-  password      String    @default("")
-  createdAt     DateTime  @default(now())
-  projects      Project[]
-  assignedTasks Task[]
-}
+### ✨ Key Features
 
-model Project {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String?
-  createdAt   DateTime @default(now())
-  ownerId     Int
-  owner       User     @relation(fields: [ownerId], references: [id])
-  tasks       Task[]
-}
+- 🔐 **Stateless Authentication:** Secure registration and login using salted `bcrypt` password hashing and signed JSON Web Tokens (JWT).
+- 🛡️ **Global Route Guards:** Application-wide `JwtAuthGuard` enforced via `APP_GUARD`, with a custom `@Public()` decorator for public auth routes.
+- 👥 **User Management:** Full CRUD operations with email uniqueness constraints.
+- 📁 **Project Organization:** One-to-many relationship linking projects to employee owners.
+- 📋 **Task Tracking & Kanban:** Nested REST endpoints (`/projects/:id/tasks`), multi-parent relationships, deadline dates (`dueDate`), and strict `TaskStatus` Enum validation (`TODO`, `IN_PROGRESS`, `DONE`).
+- 🔎 **Query Filtering:** Instant status filtering with type-safe `ParseEnumPipe` query parameters.
+- 🐳 **Containerized & Automated:** One-command deployment and lifecycle management powered by **Docker Compose** and a root **Makefile**.
 
-model Task {
-  id          Int        @id @default(autoincrement())
-  title       String
-  description String?
-  status      TaskStatus @default(TODO)
-  dueDate     DateTime?
-  createdAt   DateTime   @default(now())
-  projectId   Int
-  project     Project    @relation(fields: [projectId], references: [id])
-  assigneeId  Int?
-  assignee    User?      @relation(fields: [assigneeId], references: [id])
-}
+---
+
+## 🛠️ Tech Stack & Architecture
+
+- **Backend Framework:** [NestJS](https://nestjs.com/) (Node.js ESM)
+- **Database Engine:** [PostgreSQL 17 Alpine](https://www.postgresql.org/)
+- **Data Layer:** [Prisma ORM](https://www.prisma.io/) with `@prisma/adapter-pg`
+- **Validation Layer:** `class-validator` & `class-transformer`
+- **Security:** `@nestjs/jwt`, `bcrypt`
+- **Testing:** Integration bash test suite (`testApi.sh`), Vitest
+
+### Request Lifecycle
+
+```
+[ Client Request ]
+       │
+       ▼
+[ Global JwtAuthGuard ] ── (Is route @Public()? No token? ──► 401 Unauthorized)
+       │
+       ▼
+[ ValidationPipe (Whitelist & Transform) ] ── (Invalid payload? ──► 400 Bad Request)
+       │
+       ▼
+[ Controller ]  (Extracts @Param, @Body, @Query with Parse Pipes)
+       │
+       ▼
+[ Service ]     (Business logic & Foreign-Key existence verification)
+       │
+       ▼
+[ Prisma ORM ]  (Type-safe database queries)
+       │
+       ▼
+[ PostgreSQL ]
 ```
 
 ---
 
-## 📡 API Endpoints
+## ⚡ Quickstart with Makefile
 
-### Authentication
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| `POST` | `/auth/register` | Public | Register a new user |
-| `POST` | `/auth/login` | Public | Login and receive a JWT access token |
+The project includes a root `Makefile` that handles the entire lifecycle of Docker containers and test workflows:
 
-### Users
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| `GET` | `/users` | Protected | List all users |
-| `GET` | `/users/:id` | Protected | Get user by ID |
-| `PATCH` | `/users/:id` | Protected | Update user details |
-| `DELETE` | `/users/:id` | Protected | Delete user |
-
-### Projects
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| `POST` | `/projects` | Protected | Create a new project |
-| `GET` | `/projects` | Protected | List all projects (includes owner) |
-| `GET` | `/projects/:id` | Protected | Get project details (includes owner) |
-
-### Tasks
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| `POST` | `/projects/:id/tasks` | Protected | Create a new task under a project |
-| `GET` | `/projects/:id/tasks` | Protected | Get all tasks in a project (optional: `?status=TODO`) |
-| `PATCH` | `/tasks/:id` | Protected | Update task (status, assignee, title, etc.) |
-| `DELETE` | `/tasks/:id` | Protected | Delete a task |
+| Command | Action | Description |
+|---|---|---|
+| `make` (or `make up`) | **Build & Run** | Builds the Docker images and starts all services in the background |
+| `make build` | **Build Images** | Builds backend and database Docker images |
+| `make log` | **Follow Logs** | Streams live logs from all running containers |
+| `make clean` | **Stop Services** | Stops and removes active containers and orphan containers |
+| `make fclean` | **Full Reset** | Stops containers, deletes persistent volumes (`db/data`), and removes images |
+| `make re` | **Restart Fresh** | Runs `fclean` followed by `make all` |
+| `make test` | **Run Tests** | Runs the automated end-to-end integration test suite |
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Step-by-Step Installation
 
-### Prerequisites
-- [Docker](https://docs.docker.com/get-docker/) & [Docker Compose](https://docs.docker.com/compose/) installed.
-
-### 1. Clone the repository
+### 1. Clone the Repository
 ```bash
 git clone git@github.com:obbad-dev/task-managment-api.git
 cd task-managment-api
 ```
 
-### 2. Configure Environment Variables
-Create `.env` in the root and `backend/.env`:
+### 2. Configure Environment Files
 
-**`.env`**:
+Create the base configuration files:
+
+**`.env`** (Root Docker Compose config):
 ```env
 POSTGRES_USER=oobbad
 POSTGRES_PASSWORD=1234
 POSTGRES_DB=nestDB
 ```
 
-**`backend/.env`**:
+**`backend/.env`** (Backend application config):
 ```env
 DATABASE_URL=postgresql://oobbad:1234@db:5432/nestDB
-JWT_SECRET=your_secret_key_here
+JWT_SECRET=super_secret_jwt_key_here
 ```
 
-### 3. Start the Application
+### 3. Launch the Stack
+Simply run:
 ```bash
-docker compose up -d --build
+make
 ```
 
-The API will be live at: `http://localhost:3000`.
+Both `backend-container` (Port `3000`) and `db-container` (Port `5432`) will compile, connect, and start in watch mode with hot reloading enabled.
 
-### 4. Run Migrations (if needed)
-```bash
-docker compose exec backend npx prisma migrate dev
+---
+
+## 🗄️ Database Schema
+
+```mermaid
+erDiagram
+    User ||--o{ Project : "owns"
+    User ||--o{ Task : "assigned to"
+    Project ||--o{ Task : "contains"
+
+    User {
+        int id PK
+        string name
+        string email UK
+        string password
+        datetime createdAt
+    }
+
+    Project {
+        int id PK
+        string name
+        string description
+        int ownerId FK
+        datetime createdAt
+    }
+
+    Task {
+        int id PK
+        string title
+        string description
+        TaskStatus status
+        datetime dueDate
+        int projectId FK
+        int assigneeId FK
+        datetime createdAt
+    }
 ```
 
 ---
 
-## 🧪 Testing
+## 📡 API Reference & Examples
 
-A complete automated end-to-end integration test suite is included in `testApi.sh`:
+### 1. Authentication
 
-```bash
-chmod +x testApi.sh
-./testApi.sh
+#### Register a User
+```http
+POST /auth/register
+Content-Type: application/json
+
+{
+  "name": "Sara Connor",
+  "email": "sara@example.com",
+  "password": "securepassword123"
+}
+```
+**Response (201 Created):**
+```json
+{
+  "id": 1,
+  "name": "Sara Connor",
+  "email": "sara@example.com",
+  "createdAt": "2026-11-16T10:00:00.000Z"
+}
 ```
 
-This script verifies:
+#### Login & Receive JWT Token
+```http
+POST /auth/login
+Content-Type: application/json
+
+{
+  "email": "sara@example.com",
+  "password": "securepassword123"
+}
+```
+**Response (200 OK):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+> **Note:** For all protected endpoints below, provide the token in the header:  
+> `Authorization: Bearer <your_access_token>`
+
+---
+
+### 2. Projects Management
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/projects` | Create a new project |
+| `GET` | `/projects` | List all projects (with owner details) |
+| `GET` | `/projects/:id` | Get single project by ID |
+
+#### Create Project Example
+```http
+POST /projects
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "E-Commerce Website",
+  "description": "Building our modern online marketplace",
+  "ownerId": 1
+}
+```
+
+---
+
+### 3. Tasks Management
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/projects/:id/tasks` | Create task under project `:id` |
+| `GET` | `/projects/:id/tasks` | Get all tasks in project |
+| `GET` | `/projects/:id/tasks?status=TODO` | Filter tasks by `TODO`, `IN_PROGRESS`, or `DONE` |
+| `PATCH` | `/tasks/:id` | Update task status, deadline, or assignee |
+| `DELETE` | `/tasks/:id` | Delete task by ID |
+
+#### Create Task Example
+```http
+POST /projects/1/tasks
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "title": "Build Auth API",
+  "description": "Implement JWT and hashing with bcrypt",
+  "status": "TODO",
+  "dueDate": "2026-12-01T12:00:00.000Z",
+  "assigneeId": 1
+}
+```
+
+#### Update Task Status Example
+```http
+PATCH /tasks/1
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "status": "IN_PROGRESS"
+}
+```
+
+---
+
+## 🧪 Automated Testing
+
+Execute the complete end-to-end integration test suite using:
+
+```bash
+make test
+```
+
+The script automatically executes:
 1. User registration (`POST /auth/register`)
-2. User authentication & JWT issuance (`POST /auth/login`)
-3. Global route protection rejecting unauthenticated requests (401)
-4. Project creation, listing, and ID lookup
-5. Task creation under a project with relational verification
-6. Task filtering by enum status (`?status=TODO`)
+2. Token generation (`POST /auth/login`)
+3. Auth Guard rejection test without token (`401 Unauthorized`)
+4. Project creation, retrieval, and relation check
+5. Task creation under a project
+6. Query filtering verification (`?status=TODO`)
 7. Task status transition (`TODO` -> `DONE`)
-8. Task deletion
+8. Task deletion (`DELETE /tasks/:id`)
+
+---
+
+## 👨‍💻 Author
+
+- **Oualid Obbad** - [@obbad-dev](https://github.com/obbad-dev)
