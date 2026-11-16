@@ -1,8 +1,18 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Database data
 /db/data/
 
-# Keep environment variables out of version control
-# .env
-/generated/prisma
-/src/generated/prisma
-dist
+# Environment variables
+.env
+*.env
+backend/.env
+!.env.example
+!backend/.env.example
+
+# Build outputs
+dist/
+/generated/prisma/
+/src/generated/prisma/
+*.tsbuildinfo
